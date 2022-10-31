@@ -25,7 +25,7 @@ type Show struct {
 func main() {
 	shows := make(chan *Show, 1000)
 	go func() {
-		for pageNumber := 1; pageNumber <= 1; pageNumber++ {
+		for pageNumber := 1; pageNumber <= 24; pageNumber++ {
 			listURL := fmt.Sprintf(src, pageNumber)
 			err := retry.Do(func() error {
 				resp, err := soup.Get(listURL)
@@ -33,7 +33,7 @@ func main() {
 					return err
 				}
 				doc := soup.HTMLParse(resp)
-				children := doc.FindAll("li", "class", "clearfix")[0:1]
+				children := doc.FindAll("li", "class", "clearfix")
 
 				/**
 				<li class="clearfix">
