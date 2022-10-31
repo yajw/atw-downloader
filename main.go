@@ -1,18 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/anaskhan96/soup"
+	"github.com/avast/retry-go"
 	"io"
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/anaskhan96/soup"
-	"github.com/avast/retry-go"
 )
 
 const (
@@ -36,7 +33,7 @@ func main() {
 					return err
 				}
 				doc := soup.HTMLParse(resp)
-				children := doc.FindAll("li", "class", "clearfix")
+				children := doc.FindAll("li", "class", "clearfix")[0:1]
 
 				/**
 				<li class="clearfix">
@@ -51,10 +48,6 @@ func main() {
 					span := child.Find("span", "class", "class_num")
 					a := child.Find("a", "class", "ell")
 					seqNumber := strings.TrimLeft(strings.TrimRight(span.Text(), "篇:"), "第")
-					seq, err := strconv.ParseInt(seqNumber, 10, 64)
-					if err == nil {
-						seqNumber = fmt.Sprintf("%04d", seq)
-					}
 					shows <- &Show{
 						siteURL:   a.Attrs()["href"],
 						SeqNumber: seqNumber,
@@ -74,9 +67,10 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 	for show := range shows {
-		go func(s *Show) {
-			wg.Add(1)
+		wg.Add(1)
 
+		println(show.siteURL)
+		go func(s *Show) {
 			defer wg.Done()
 			err := retry.Do(func() error {
 				resp, err := soup.Get(s.siteURL)
@@ -85,11 +79,16 @@ func main() {
 				}
 				doc := soup.HTMLParse(resp)
 				children := doc.FindAll("div", "id", "mp3")
+				println(len(children))
 				for i := range children {
 					downloadURL := children[i].Text()
 					prefix, postfix := urlFileName(downloadURL)
-					fileName := buildFilename(fmt.Sprintf("%v.%s %v.%s", s.SeqNumber, prefix, s.Title, postfix))
+					fileName := buildFilename(fmt.Sprintf("%s#%s %v.%s", prefix, s.SeqNumber, s.Title, postfix))
 					println(fmt.Sprintf("%v,url=%s", fileName, downloadURL))
+					if err = downloadFile(fileName, downloadURL); err != nil {
+						println(err)
+						break
+					}
 				}
 				return nil
 			})
@@ -149,14 +148,6 @@ func downloadFile(filepath string, url string) (err error) {
 	}
 
 	return nil
-}
-
-func stringify(o interface{}) string {
-	bts, err := json.Marshal(o)
-	if err != nil {
-		return fmt.Sprintf("<err:%v>", err)
-	}
-	return string(bts)
 }
 
 func urlFileName(url string) (string, string) {
