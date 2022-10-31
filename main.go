@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/anaskhan96/soup"
-	"github.com/avast/retry-go"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"strings"
 	"sync"
+
+	"github.com/anaskhan96/soup"
+	"github.com/avast/retry-go"
 )
 
 const (
